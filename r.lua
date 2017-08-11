@@ -1,4 +1,8 @@
 #!/usr/bin/lua
+-- Please note the weird dependencies here;
+-- https://github.com/zserge/luash
+-- https://github.com/Lua-cURL/Lua-cURLv3
+-- And yes, I know I could have used curl through luash. I wrote this script to get my feet wet with these libraries.
 local _RELEASES = {"artful", "zesty", "yakkety", "xenial"}
 local _SPAM = {
 	"https?://",
