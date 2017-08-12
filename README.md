@@ -10,4 +10,8 @@ Then, a year ago or so, I came across [luash](https://github.com/zserge/luash) a
 
 All the scripts are terrible, but they get the job done. Pull requests welcome!
 
-folk@folk.wtf
+## Screenshot
+
+![r.lua output with lots of repositories](screenshot-rlua.png)
+
+by folk@folk.wtf
