@@ -1,6 +1,6 @@
 #!/usr/bin/lua
 -- Please note the weird dependencies here;
--- https://github.com/zserge/luash
+-- https://github.com/folknor/luash
 -- https://github.com/Lua-cURL/Lua-cURLv3
 -- And yes, I know I could have used curl through luash. I wrote this script to get my feet wet with these libraries.
 local _RELEASES = {"artful", "zesty", "yakkety", "xenial"}
@@ -16,6 +16,7 @@ local _SPAM = {
 local io = require("io")
 local sh = require("sh")
 local curl = require("lcurl")
+local tput, grep, cat, ls = sh.command("tput"), sh.command("grep"), sh.command("cat"), sh.command("ls")
 local _ = tostring
 
 local colors = tonumber(_(tput("colors")))
@@ -28,7 +29,13 @@ if colors and colors > 7 then
 	white = _(tput("setaf 7"))
 end
 
-local function print(tbl, ...) if select("#", ...) > 0 then io.write(..., table.concat(tbl, "\t"), reset, "\n") else io.write(table.concat(tbl, "\t"), reset, "\n") end end
+local function print(tbl, ...)
+	if select("#", ...) > 0 then
+		io.write(..., table.concat(tbl, "\t"), reset, "\n")
+	else
+		io.write(table.concat(tbl, "\t"), reset, "\n")
+	end
+end
 
 local debGrep = "deb\\ "
 local dotD = "/etc/apt/sources.list.d/"
