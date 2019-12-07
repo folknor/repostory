@@ -3,7 +3,7 @@
 -- https://github.com/folknor/luash
 -- https://github.com/Lua-cURL/Lua-cURLv3
 -- And yes, I know I could have used curl through luash. I wrote this script to get my feet wet with these libraries.
-local _RELEASES = {"artful", "zesty", "yakkety", "xenial"}
+local _RELEASES = {"focal", "eoan", "disco", "cosmic"}
 local _SPAM = {
 	"https?://",
 	"ppa.launchpad.net/",
@@ -45,6 +45,23 @@ for file in sourceLs:gmatch("[^\n]+") do sources[#sources+1] = _(grep(cat(dotD .
 for i = #sources, 1, -1 do if sources[i] == "" then table.remove(sources, i) end end -- '/^$/d'
 local stdAffixes = { "(%a+)%-proposed", "(%a+)%-updates", "(%a+)%-backports", "(%a+)%-security" }
 
+local mirrorData = {}
+local function getMirrorData(url)
+	if mirrorData[url] then return mirrorData[url] end
+	local data = ""
+	local get = curl.easy({
+		url = url,
+		writefunction = function(incoming)
+			data = data .. incoming
+			return true
+		end,
+	})
+	get:perform()
+	get:close()
+	mirrorData[url] = select(3, data:find("^(%S+)\n"))
+	return mirrorData[url]
+end
+
 local unique = {}
 for i = 1, #sources do
 	local s = sources[i]
@@ -53,18 +70,21 @@ for i = 1, #sources do
 			-- Remove trailing comments, deb prefix, and [arch=x,y]
 			local res = line:gsub("%s?#.*", ""):gsub("deb%s+", ""):gsub("%[.*%]%s+", "")
 			local url, repo = res:match("^(%S+)%s+([%S]+)")
-			if not url:find("/$") then url = url .. "/" end
-			local strippedRepo = repo
-			for k = 1, 4 do
-				local stripped = repo:match(stdAffixes[k])
-				if stripped then strippedRepo = stripped; break end
+			if url and repo then
+				if url:find("mirrors.txt$") then
+					url = getMirrorData(url:gsub("mirror://", "http://"))
+				end
+				if not url:find("/$") then url = url .. "/" end
+				local strippedRepo = repo
+				for k = 1, 4 do
+					local stripped = repo:match(stdAffixes[k])
+					if stripped then strippedRepo = stripped; break end
+				end
+				unique[url] = strippedRepo
 			end
-			unique[url] = strippedRepo
 		end
 	end
 end
-
-
 
 local data = {}
 local repoFormat = "%sdists/"
