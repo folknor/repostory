@@ -3,7 +3,8 @@
 -- https://github.com/folknor/luash
 -- https://github.com/Lua-cURL/Lua-cURLv3
 -- And yes, I know I could have used curl through luash. I wrote this script to get my feet wet with these libraries.
-local _RELEASES = {"focal", "eoan", "disco", "cosmic"}
+
+local _RELEASES = { "resolute", "questing", "plucky", "oracular" }
 local _SPAM = {
 	"https?://",
 	"ppa.launchpad.net/",
@@ -40,8 +41,8 @@ end
 local debGrep = "deb\\ "
 local dotD = "/etc/apt/sources.list.d/"
 local sourceLs = _(grep(ls(dotD), "-v", ".save"))
-local sources = {_(grep(cat("/etc/apt/sources.list"), debGrep))}
-for file in sourceLs:gmatch("[^\n]+") do sources[#sources+1] = _(grep(cat(dotD .. file), debGrep)) end
+local sources = { _(grep(cat("/etc/apt/sources.list"), debGrep)) }
+for file in sourceLs:gmatch("[^\n]+") do sources[#sources + 1] = _(grep(cat(dotD .. file), debGrep)) end
 for i = #sources, 1, -1 do if sources[i] == "" then table.remove(sources, i) end end -- '/^$/d'
 local stdAffixes = { "(%a+)%-proposed", "(%a+)%-updates", "(%a+)%-backports", "(%a+)%-security" }
 
@@ -78,7 +79,9 @@ for i = 1, #sources do
 				local strippedRepo = repo
 				for k = 1, 4 do
 					local stripped = repo:match(stdAffixes[k])
-					if stripped then strippedRepo = stripped; break end
+					if stripped then
+						strippedRepo = stripped; break
+					end
 				end
 				unique[url] = strippedRepo
 			end
@@ -113,20 +116,20 @@ end
 
 local greenYes = green .. "[Yes]" .. reset
 local bracketYes = white .. "[Yes]" .. reset
-local redYes =  red .. "Yes" .. reset
+local redYes = red .. "Yes" .. reset
 local plain = "Yes"
 
 local sortedUnfucked = {}
 for url in pairs(data) do
-	sortedUnfucked[#sortedUnfucked+1] = url
+	sortedUnfucked[#sortedUnfucked + 1] = url
 end
 table.sort(sortedUnfucked, function(a, b) return data[b].unfucked > data[a].unfucked end)
 
 local printDists = {}
 for _, dist in next, _RELEASES do
-	printDists[#printDists+1] = dist:upper()
+	printDists[#printDists + 1] = dist:upper()
 end
-printDists[#printDists+1] = "URL"
+printDists[#printDists + 1] = "URL"
 print(printDists, bold, white)
 
 for _, url in next, sortedUnfucked do
