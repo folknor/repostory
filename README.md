@@ -8,6 +8,8 @@ At this point I also removed zenity completely, so it would be easier to use the
 
 Then, a year ago or so, I came across [luash](https://github.com/zserge/luash) and I immediately wanted to start converting my existing lua shell scripts to using it - but I had to get my feet wet first, so I made `r.lua`.
 
+Almost a decade later LLMs suddenly became useful and the apt gods for some reason decided to create a new sources format. I instructed the LLM to fix my lua script, and it did.
+
 All the scripts are terrible, but they get the job done. Pull requests welcome!
 
 ## Screenshot
