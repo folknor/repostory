@@ -8,6 +8,7 @@ local _RELEASES = { "resolute", "questing", "plucky", "oracular" }
 local _SPAM = {
 	"https?://",
 	"ppa.launchpad.net/",
+	"ppa.launchpadcontent.net/",
 	"/ubuntu",
 	".com",
 	"/deb",
@@ -30,11 +31,41 @@ if colors and colors > 7 then
 	white = _(tput("setaf 7"))
 end
 
-local function print(tbl, ...)
-	if select("#", ...) > 0 then
-		io.write(..., table.concat(tbl, "\t"), reset, "\n")
-	else
-		io.write(table.concat(tbl, "\t"), reset, "\n")
+-- Column widths will be calculated before printing
+local colWidths = {}
+
+-- Strip ANSI codes to get actual display width
+local function stripAnsi(s)
+	s = s:gsub("\027%([A-Z]", "")      -- character set selection (e.g. \027(B)
+	s = s:gsub("\027%[[%d;]*[a-zA-Z]", "") -- CSI sequences (e.g. \027[32m, \027[m)
+	return s
+end
+
+local function padRight(s, width)
+	local visibleLen = #stripAnsi(s)
+	return s .. string.rep(" ", math.max(0, width - visibleLen))
+end
+
+local outputRows = {}
+local function queueRow(tbl, prefix)
+	outputRows[#outputRows + 1] = { cells = tbl, prefix = prefix or "" }
+	for i, cell in ipairs(tbl) do
+		local w = #stripAnsi(cell)
+		colWidths[i] = math.max(colWidths[i] or 0, w)
+	end
+end
+
+local function flushOutput()
+	for _, row in ipairs(outputRows) do
+		io.write(row.prefix)
+		for i, cell in ipairs(row.cells) do
+			if i < #row.cells then
+				io.write(padRight(cell, colWidths[i] + 2))
+			else
+				io.write(cell)
+			end
+		end
+		io.write(reset, "\n")
 	end
 end
 
@@ -42,8 +73,30 @@ local debGrep = "deb\\ "
 local dotD = "/etc/apt/sources.list.d/"
 local sourceLs = _(grep(ls(dotD), "-v", ".save"))
 local sources = { _(grep(cat("/etc/apt/sources.list"), debGrep)) }
-for file in sourceLs:gmatch("[^\n]+") do sources[#sources + 1] = _(grep(cat(dotD .. file), debGrep)) end
+for file in sourceLs:gmatch("[^\n]+") do
+	if file:match("%.list$") then
+		sources[#sources + 1] = _(grep(cat(dotD .. file), debGrep))
+	end
+end
 for i = #sources, 1, -1 do if sources[i] == "" then table.remove(sources, i) end end -- '/^$/d'
+
+-- Parse DEB822 .sources files
+local deb822sources = {}
+for file in sourceLs:gmatch("[^\n]+") do
+	if file:match("%.sources$") then
+		local content = _(cat(dotD .. file))
+		local uri, suite
+		for line in content:gmatch("[^\n]+") do
+			local key, value = line:match("^(%S+):%s*(.+)$")
+			if key == "URIs" then uri = value end
+			if key == "Suites" then suite = value end
+		end
+		if uri and suite then
+			deb822sources[#deb822sources + 1] = { uri = uri, suite = suite }
+		end
+	end
+end
+
 local stdAffixes = { "(%a+)%-proposed", "(%a+)%-updates", "(%a+)%-backports", "(%a+)%-security" }
 
 local mirrorData = {}
@@ -89,6 +142,21 @@ for i = 1, #sources do
 	end
 end
 
+-- Add DEB822 sources to unique
+for _, src in ipairs(deb822sources) do
+	local url = src.uri
+	local repo = src.suite
+	if not url:find("/$") then url = url .. "/" end
+	local strippedRepo = repo
+	for k = 1, 4 do
+		local stripped = repo:match(stdAffixes[k])
+		if stripped then
+			strippedRepo = stripped; break
+		end
+	end
+	unique[url] = strippedRepo
+end
+
 local data = {}
 local repoFormat = "%sdists/"
 for url, repo in pairs(unique) do
@@ -130,7 +198,7 @@ for _, dist in next, _RELEASES do
 	printDists[#printDists + 1] = dist:upper()
 end
 printDists[#printDists + 1] = "URL"
-print(printDists, bold, white)
+queueRow(printDists, bold .. white)
 
 for _, url in next, sortedUnfucked do
 	local meta = data[url]
@@ -165,8 +233,9 @@ for _, url in next, sortedUnfucked do
 	if foundCurrent then
 		printThis[#printThis + 1] = meta.unfucked
 	else
-		printThis[#printThis + 1] = meta.unfucked
-		printThis[#printThis + 1] = "(" .. currentDistribution .. ")"
+		printThis[#printThis + 1] = meta.unfucked .. " (" .. currentDistribution .. ")"
 	end
-	print(printThis)
+	queueRow(printThis)
 end
+
+flushOutput()
